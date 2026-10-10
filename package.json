@@ -1,0 +1,25 @@
+{
+  "name": "dc-compose",
+  "version": "1.0.2",
+  "description": "Short, memorable shortcuts for docker compose",
+  "type": "module",
+  "bin": {
+    "dc": "bin/dc.js"
+  },
+  "author": {
+    "name": "Korab Arifi",
+    "email": "info@korabi.dev",
+    "url": "https://korabi.dev/"
+  },
+  "files": [
+    "bin",
+    "src",
+    "server",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["docker", "docker-compose", "compose", "cli", "devops"],
+  "license": "MIT"
+}

@@ -1,0 +1,1166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Compose Manager</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css"
+    />
+    <style>
+      :root {
+        --bg: #0b0d10;
+        --panel: #11151a;
+        --panel-2: #171c22;
+        --panel-3: #1d242c;
+        --border: #29313b;
+        --text: #edf2f7;
+        --muted: #929eac;
+        --orange: #fb923c;
+        --orange-hover: #fdab65;
+        --green: #55d6a0;
+        --red: #ff7474;
+        --blue: #7db7ff;
+        --radius: 14px;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        background: var(--bg);
+      }
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible,
+      .CodeMirror-focused {
+        outline: 2px solid var(--orange);
+        outline-offset: 2px;
+      }
+      .app {
+        min-height: 100vh;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        display: inline-block;
+        border-radius: 50%;
+        background: #647080;
+        flex: 0 0 auto;
+      }
+      .dot.online {
+        background: var(--green);
+        box-shadow: 0 0 10px #55d6a055;
+      }
+      .dot.offline {
+        background: var(--red);
+      }
+      main {
+        min-width: 0;
+        padding: 34px clamp(18px, 4vw, 52px) 48px;
+      }
+      .topbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 28px;
+      }
+      h1 {
+        font-size: clamp(26px, 3vw, 34px);
+        letter-spacing: -1.2px;
+        margin: 0 0 8px;
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .top-actions {
+        display: flex;
+        gap: 9px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 9px 13px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        background: var(--panel-2);
+        color: var(--text);
+        font-weight: 650;
+        font-size: 12px;
+        transition: 0.15s ease;
+        white-space: nowrap;
+      }
+      .btn:hover {
+        background: var(--panel-3);
+        border-color: #44505d;
+      }
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .btn.primary {
+        background: var(--orange);
+        color: #27170b;
+        border-color: var(--orange);
+      }
+      .btn.primary:hover {
+        background: var(--orange-hover);
+      }
+      .btn.danger {
+        color: #ffaaaa;
+      }
+      .btn.quiet {
+        background: transparent;
+      }
+      .btn.small {
+        min-height: 30px;
+        padding: 6px 9px;
+        font-size: 11px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 13px;
+        margin-bottom: 24px;
+      }
+      .stat {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        border-radius: var(--radius);
+        padding: 17px 19px;
+      }
+      .stat-label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .stat-value {
+        font-size: 26px;
+        font-weight: 760;
+        letter-spacing: -0.7px;
+        margin-top: 8px;
+      }
+      .stat-note {
+        color: #778392;
+        font-size: 11px;
+        margin-top: 3px;
+      }
+      .content-grid {
+        display: block;
+        min-width: 0;
+      }
+      .panel {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        border-radius: var(--radius);
+        min-width: 0;
+        overflow: hidden;
+      }
+      .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 17px 18px;
+        border-bottom: 1px solid var(--border);
+      }
+      .panel-title {
+        font-size: 14px;
+        font-weight: 750;
+      }
+      .panel-sub {
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 4px;
+      }
+      .search-wrap {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+      .search {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 11px;
+        color: var(--text);
+        background: #0c0f12;
+        font-size: 12px;
+      }
+      .stack-list {
+        padding: 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 12px;
+        align-items: stretch;
+      }
+      .stack-row {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        cursor: pointer;
+        min-width: 0;
+        min-height: 104px;
+        background: linear-gradient(145deg, #151a20, #101419);
+        transition:
+          border-color 0.15s ease,
+          background 0.15s ease,
+          transform 0.15s ease;
+      }
+      .stack-row:hover {
+        background: var(--panel-2);
+        border-color: #56616e;
+        transform: translateY(-2px);
+      }
+      .stack-row:focus-visible {
+        outline: 2px solid var(--orange);
+        outline-offset: 2px;
+      }
+      .stack-row.selected {
+        background: #241b14;
+        border-color: #9a5a2b;
+      }
+      .stack-row-top {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+      }
+      .stack-symbol {
+        width: 30px;
+        height: 30px;
+        border: 1px solid #38414c;
+        border-radius: 8px;
+        background: #1c232b;
+        display: grid;
+        place-items: center;
+        color: var(--orange);
+        flex: 0 0 auto;
+      }
+      .stack-name {
+        font-size: 13px;
+        font-weight: 720;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .stack-meta {
+        font-size: 11px;
+        color: var(--muted);
+        margin: 8px 0 0 39px;
+      }
+      .empty {
+        grid-column: 1 / -1;
+        padding: 34px 20px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .empty strong {
+        display: block;
+        color: var(--text);
+        font-size: 14px;
+        margin-bottom: 6px;
+      }
+      .editor-panel .panel-head {
+        align-items: flex-start;
+      }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(3, 5, 8, 0.78);
+        backdrop-filter: blur(8px);
+        overflow-y: auto;
+      }
+      .modal-backdrop[hidden] {
+        display: none;
+      }
+      .editor-panel {
+        width: min(1050px, 100%);
+        max-height: calc(100vh - 48px);
+        overflow-y: auto;
+        box-shadow: 0 24px 90px #0009;
+      }
+      .modal-close {
+        width: 32px;
+        min-width: 32px;
+        height: 32px;
+        padding: 0;
+        font-size: 18px;
+      }
+      body.modal-open {
+        overflow: hidden;
+      }
+      .notice.show {
+        position: fixed;
+        z-index: 1100;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(620px, calc(100vw - 32px));
+        box-shadow: 0 12px 36px #0008;
+      }
+      .editor-heading {
+        min-width: 0;
+      }
+      .editor-title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .editor-title {
+        font-size: 14px;
+        font-weight: 750;
+        overflow-wrap: anywhere;
+      }
+      .pill {
+        border: 1px solid #35404b;
+        border-radius: 5px;
+        color: #aab6c3;
+        font:
+          10px ui-monospace,
+          monospace;
+        padding: 3px 6px;
+      }
+      .editor-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+      .field-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        color: #b5c0cc;
+        margin-bottom: 7px;
+      }
+      .name-field {
+        width: 100%;
+        background: #0b0e11;
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 10px 11px;
+        font-size: 12px;
+      }
+      .editor-body {
+        padding: 16px;
+      }
+      .name-group {
+        margin-bottom: 15px;
+      }
+      .code-wrap {
+        border: 1px solid #303944;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #0a0d10;
+      }
+      .code-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 9px 12px;
+        border-bottom: 1px solid #252d36;
+        color: #8592a0;
+        font-size: 11px;
+      }
+      .code-toolbar .file-dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--orange);
+        margin-right: 7px;
+      }
+      textarea.code {
+        display: block;
+        width: 100%;
+        min-height: 360px;
+        resize: vertical;
+        border: 0;
+        outline: none;
+        padding: 15px;
+        color: #d5e0eb;
+        background: transparent;
+        font:
+          12px/1.65 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Consolas,
+          monospace;
+        tab-size: 2;
+        white-space: pre;
+      }
+      .CodeMirror {
+        height: 420px;
+        font-size: 12px;
+        line-height: 1.65;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: #0a0d10;
+      }
+      .CodeMirror-gutters {
+        background: #0a0d10;
+        border-right: 1px solid #29313b;
+      }
+      .CodeMirror-linenumber {
+        color: #64748b;
+      }
+      .CodeMirror-cursor {
+        border-left: 1px solid #edf2f7;
+      }
+      .CodeMirror-selected {
+        background: #344454 !important;
+      }
+      .CodeMirror-focused {
+        outline: none;
+      }
+      .CodeMirror-scroll {
+        min-height: 360px;
+      }
+      .CodeMirror pre {
+        padding: 0 4px;
+      }
+      .CodeMirror .cm-atom,
+      .CodeMirror .cm-number {
+        color: #fca5a5;
+      }
+      .CodeMirror .cm-string {
+        color: #a5d6a7;
+      }
+      .CodeMirror .cm-meta {
+        color: #fb923c;
+      }
+      .CodeMirror .cm-comment {
+        color: #718096;
+      }
+      .editor-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .hint {
+        color: #778392;
+        font-size: 11px;
+        line-height: 1.5;
+      }
+      .footer-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .notice {
+        display: none;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 11px 13px;
+        font-size: 12px;
+        margin-bottom: 17px;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+      }
+      .notice.show {
+        display: block;
+      }
+      .notice.success {
+        border-color: #285b48;
+        background: #10251e;
+        color: #a2f0ce;
+      }
+      .notice.error {
+        border-color: #693333;
+        background: #291616;
+        color: #ffb4b4;
+      }
+      .notice.info {
+        border-color: #294a6a;
+        background: #111f2e;
+        color: #b5d8ff;
+      }
+      .footnote {
+        color: #697583;
+        font-size: 11px;
+        line-height: 1.55;
+        margin-top: 11px;
+      }
+      .loading {
+        opacity: 0.65;
+        pointer-events: none;
+      }
+      .mobile-menu {
+        display: none;
+      }
+      @media (max-width: 1000px) {
+        .stack-list {
+          grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        }
+      }
+      @media (max-width: 680px) {
+        main {
+          padding: 22px 14px 32px;
+        }
+        .topbar {
+          flex-direction: column;
+        }
+        .stats {
+          gap: 8px;
+        }
+        .stat {
+          padding: 12px;
+        }
+        .stat-value {
+          font-size: 21px;
+        }
+        .stat-note {
+          display: none;
+        }
+        .modal-backdrop {
+          padding: 10px;
+          align-items: flex-start;
+        }
+        .editor-panel {
+          max-height: calc(100vh - 20px);
+        }
+        .editor-panel .panel-head {
+          flex-wrap: wrap;
+        }
+        .editor-actions {
+          width: 100%;
+        }
+        .CodeMirror {
+          height: 360px;
+        }
+        .CodeMirror-scroll {
+          min-height: 300px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <main>
+        <header class="topbar">
+          <div>
+            <h1>Stacks</h1>
+            <div class="subtitle">
+              Manage your Docker Compose projects from one place.
+            </div>
+          </div>
+          <div class="top-actions">
+            <button class="btn" type="button" id="refresh-btn">
+              ↻ &nbsp; Refresh</button
+            ><button class="btn primary" type="button" id="new-btn">
+              ＋ &nbsp; New stack
+            </button>
+          </div>
+        </header>
+        <div class="notice" id="notice" role="status" aria-live="polite"></div>
+        <section class="stats" aria-label="Stack summary">
+          <div class="stat">
+            <div class="stat-label">Total stacks</div>
+            <div class="stat-value" id="total-stacks">—</div>
+            <div class="stat-note">Discovered by the API</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Selected stack</div>
+            <div
+              class="stat-value"
+              id="selected-stack-stat"
+              style="font-size: 19px; overflow-wrap: anywhere"
+            >
+              None
+            </div>
+            <div class="stat-note">Currently open in editor</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">API connection</div>
+            <div class="stat-value" id="api-stat" style="font-size: 19px">
+              Unknown
+            </div>
+            <div class="stat-note" id="last-refresh">Not checked yet</div>
+          </div>
+        </section>
+        <section class="content-grid" id="stacks-section">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Your stacks</div>
+                <div class="panel-sub" id="stack-count-label">
+                  Waiting for API…
+                </div>
+              </div>
+              <span class="pill" id="stack-count-pill">0</span>
+            </div>
+            <div class="search-wrap">
+              <input
+                class="search"
+                id="search"
+                type="search"
+                placeholder="⌕  Search stacks…"
+                aria-label="Search stacks"
+              />
+            </div>
+            <div class="stack-list" id="stack-list">
+              <div class="empty">
+                <strong>Loading stacks</strong>Connecting to your dc API…
+              </div>
+            </div>
+          </div>
+        </section>
+        <div
+          class="modal-backdrop"
+          id="editor-modal"
+          hidden
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="editor-heading"
+        >
+          <div class="panel editor-panel">
+            <div class="panel-head">
+              <div class="editor-heading">
+                <div class="editor-title-row">
+                  <div class="editor-title" id="editor-heading">
+                    Compose editor
+                  </div>
+                  <span class="pill" id="format-pill">YAML / JSON</span>
+                </div>
+                <div class="panel-sub" id="editor-subtitle">
+                  Select a stack to inspect its configuration.
+                </div>
+              </div>
+              <div class="editor-actions">
+                <button class="btn small" type="button" id="start-btn" disabled>
+                  ▶ Start</button
+                ><button class="btn small" type="button" id="stop-btn" disabled>
+                  ■ Stop</button
+                ><button
+                  class="btn small"
+                  type="button"
+                  id="restart-btn"
+                  disabled
+                >
+                  ↻ Restart</button
+                ><button
+                  class="btn small modal-close"
+                  type="button"
+                  id="close-editor-btn"
+                  aria-label="Close editor"
+                  title="Close editor"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div class="editor-body">
+              <div class="name-group">
+                <label class="field-label" for="stack-name">Stack name</label
+                ><input
+                  class="name-field"
+                  id="stack-name"
+                  placeholder="e.g. my-app"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+              </div>
+              <div class="code-wrap">
+                <div class="code-toolbar">
+                  <span
+                    ><span class="file-dot"></span
+                    ><span id="filename">compose.yaml</span></span
+                  ><span id="line-count">0 lines</span>
+                </div>
+                <textarea
+                  class="code"
+                  id="stack-content"
+                  spellcheck="false"
+                  autocapitalize="off"
+                  autocomplete="off"
+                  placeholder="Select a stack or create a new one, then enter your Compose configuration…"
+                ></textarea>
+              </div>
+              <div class="editor-footer">
+                <div class="hint" id="editor-hint">
+                  Changes are local until you click Save stack.
+                </div>
+                <div class="footer-actions">
+                  <button class="btn" type="button" id="discard-btn" disabled>
+                    Discard</button
+                  ><button class="btn primary" type="button" id="save-btn">
+                    Save stack
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footnote" style="text-align: center; margin-top: 24px">
+          A lightweight interface for Docker Compose
+        </div>
+      </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script>
+      (() => {
+        const DEFAULT_API = window.location.origin;
+        const $ = (id) => document.getElementById(id);
+        const state = {
+          apiBase: DEFAULT_API,
+          stacks: [],
+          selectedName: null,
+          originalName: "",
+          originalContent: "",
+          isNew: false,
+          busy: false,
+          lastRefresh: null,
+        };
+        const els = {
+          notice: $("notice"),
+          stackList: $("stack-list"),
+          search: $("search"),
+          name: $("stack-name"),
+          content: $("stack-content"),
+          modal: $("editor-modal"),
+          save: $("save-btn"),
+          discard: $("discard-btn"),
+          start: $("start-btn"),
+          stop: $("stop-btn"),
+          restart: $("restart-btn"),
+        };
+
+        const editor = CodeMirror.fromTextArea(els.content, {
+          mode: "yaml",
+          theme: "material-darker",
+          lineNumbers: true,
+          indentUnit: 2,
+          tabSize: 2,
+          indentWithTabs: false,
+          matchBrackets: true,
+          autoCloseBrackets: true,
+          lineWrapping: false,
+          styleActiveLine: true,
+          extraKeys: {
+            Tab: (cm) =>
+              cm.somethingSelected()
+                ? cm.indentSelection("add")
+                : cm.replaceSelection("  ", "end"),
+            "Shift-Tab": "indentLess",
+            "Ctrl-S": () => saveStack(),
+            "Cmd-S": () => saveStack(),
+          },
+        });
+        function apiUrl(path) {
+          return state.apiBase + path;
+        }
+        function setNotice(message, type = "info") {
+          els.notice.textContent = message;
+          els.notice.className = "notice show " + type;
+        }
+        function clearNotice() {
+          els.notice.className = "notice";
+          els.notice.textContent = "";
+        }
+        function setConnection(online, label) {
+          $("api-stat").textContent = online ? "Connected" : "Offline";
+          $("api-stat").style.color = online ? "var(--green)" : "var(--red)";
+        }
+        function setBusy(value) {
+          state.busy = value;
+          document.body.classList.toggle("loading", value);
+          for (const button of document.querySelectorAll("button")) {
+            if (button.dataset.keepEnabled === "true") continue;
+            button.disabled =
+              value || button.dataset.originalDisabled === "true";
+          }
+          updateEditorState();
+        }
+        function isDirty() {
+          return (
+            els.name.value !== state.originalName ||
+            editor.getValue() !== state.originalContent
+          );
+        }
+        function updateEditorState() {
+          const content = editor.getValue();
+          const hasSelection = state.selectedName !== null || state.isNew;
+          els.save.disabled =
+            state.busy ||
+            !hasSelection ||
+            !els.name.value.trim() ||
+            !content.trim();
+          els.discard.disabled = state.busy || !isDirty();
+          els.start.disabled = state.busy || !state.selectedName || state.isNew;
+          els.stop.disabled = state.busy || !state.selectedName || state.isNew;
+          els.restart.disabled =
+            state.busy || !state.selectedName || state.isNew;
+          $("selected-stack-stat").textContent = state.isNew
+            ? "New stack"
+            : state.selectedName || "None";
+          $("editor-heading").textContent = state.isNew
+            ? "Create stack"
+            : state.selectedName || "Compose editor";
+          $("editor-subtitle").textContent = state.isNew
+            ? "Define a name and Compose configuration."
+            : state.selectedName
+              ? "Review or edit this stack configuration."
+              : "Select a stack to inspect its configuration.";
+          $("filename").textContent =
+            (els.name.value.trim() || "compose") +
+            (content.trimStart().startsWith("{") ? ".json" : ".yaml");
+          const lines = content ? content.split("\n").length : 0;
+          $("line-count").textContent =
+            lines + (lines === 1 ? " line" : " lines");
+          $("editor-hint").textContent = isDirty()
+            ? "Unsaved changes"
+            : "Changes are local until you click Save stack.";
+        }
+        function confirmDiscardIfDirty() {
+          return !isDirty() || window.confirm("Discard your unsaved changes?");
+        }
+        function escapeHtml(value) {
+          return String(value).replace(
+            /[&<>"']/g,
+            (ch) =>
+              ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;",
+              })[ch],
+          );
+        }
+        function renderStacks() {
+          const query = els.search.value.trim().toLowerCase();
+          const filtered = state.stacks.filter((s) =>
+            String(s.name || "")
+              .toLowerCase()
+              .includes(query),
+          );
+          $("total-stacks").textContent = state.stacks.length;
+          $("stack-count-pill").textContent = state.stacks.length;
+          $("stack-count-label").textContent =
+            state.stacks.length +
+            (state.stacks.length === 1 ? " stack found" : " stacks found");
+          if (!filtered.length) {
+            els.stackList.innerHTML =
+              '<div class="empty"><strong>' +
+              (query ? "No matching stacks" : "No stacks found") +
+              "</strong>" +
+              (query
+                ? "Try a different search term."
+                : "Create a new stack or check that your API returns a stacks array.") +
+              "</div>";
+            return;
+          }
+          els.stackList.innerHTML = filtered
+            .map((stack) => {
+              const name = String(stack.name || "(unnamed stack)");
+              const selected =
+                state.selectedName === stack.name && !state.isNew;
+              const content = String(stack.content || "");
+              const lines = content ? content.split("\n").length : 0;
+              return `<div class="stack-row ${selected ? "selected" : ""}" role="button" tabindex="0" data-stack="${escapeHtml(name)}" aria-label="Open ${escapeHtml(name)}"><div class="stack-row-top"><div class="stack-symbol">▤</div><div style="min-width:0;flex:1"><div class="stack-name">${escapeHtml(name)}</div></div><span class="dot" title="Status not provided by API"></span></div><div class="stack-meta">${lines} config ${lines === 1 ? "line" : "lines"} · Compose</div></div>`;
+            })
+            .join("");
+          els.stackList.querySelectorAll(".stack-row").forEach((row) => {
+            const open = () => selectStack(row.dataset.stack);
+            row.addEventListener("click", open);
+            row.addEventListener("keydown", (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                open();
+              }
+            });
+          });
+        }
+        function openEditor() {
+          els.modal.hidden = false;
+          document.body.classList.add("modal-open");
+          requestAnimationFrame(() => {
+            editor.refresh();
+            if (state.isNew) els.name.focus();
+            else editor.focus();
+          });
+        }
+        function closeEditor() {
+          if (!confirmDiscardIfDirty()) return;
+          els.modal.hidden = true;
+          document.body.classList.remove("modal-open");
+        }
+        function selectStack(name) {
+          if (!confirmDiscardIfDirty()) return;
+          const stack = state.stacks.find((s) => s.name === name);
+          if (!stack) return;
+          state.selectedName = stack.name;
+          state.isNew = false;
+          state.originalName = String(stack.name || "");
+          state.originalContent = String(stack.content || "");
+          els.name.value = state.originalName;
+          editor.setValue(state.originalContent);
+          clearNotice();
+          renderStacks();
+          updateEditorState();
+          openEditor();
+        }
+        function newStack() {
+          if (!confirmDiscardIfDirty()) return;
+          state.selectedName = null;
+          state.isNew = true;
+          state.originalName = "";
+          state.originalContent = "";
+          els.name.value = "";
+          editor.setValue(
+            "services:\n  app:\n    image: nginx:alpine\n    restart: unless-stopped\n",
+          );
+          clearNotice();
+          renderStacks();
+          updateEditorState();
+          openEditor();
+        }
+        async function request(path, options = {}) {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 20000);
+          try {
+            const response = await fetch(apiUrl(path), {
+              ...options,
+              signal: controller.signal,
+              headers: {
+                Accept: "application/json",
+                ...(options.body ? { "Content-Type": "application/json" } : {}),
+                ...(options.headers || {}),
+              },
+            });
+            let data;
+            const raw = await response.text();
+            try {
+              data = raw ? JSON.parse(raw) : {};
+            } catch {
+              data = { error: raw || `HTTP ${response.status}` };
+            }
+            if (!response.ok || data.error)
+              throw new Error(
+                data.error || `Request failed with HTTP ${response.status}`,
+              );
+            return data;
+          } catch (error) {
+            if (error.name === "AbortError")
+              throw new Error("The API request timed out.");
+            if (error instanceof TypeError)
+              throw new Error(
+                "Could not reach the API. Check the API URL, that the service is running, and browser CORS settings.",
+              );
+            throw error;
+          } finally {
+            clearTimeout(timeout);
+          }
+        }
+        async function loadStacks({ quiet = false } = {}) {
+          if (state.busy) return;
+          setBusy(true);
+          if (!quiet) clearNotice();
+          try {
+            const data = await request("/stacks");
+            if (!data || !Array.isArray(data.stacks))
+              throw new Error(
+                'Unexpected API response: expected { "stacks": [...] }.',
+              );
+            const previousName = state.selectedName;
+            state.stacks = data.stacks.map((s) => ({
+              name: String(s.name ?? ""),
+              content: String(s.content ?? ""),
+            }));
+            state.lastRefresh = new Date();
+            $("last-refresh").textContent =
+              "Updated " + state.lastRefresh.toLocaleTimeString();
+            setConnection(true, "API connected");
+            renderStacks();
+            if (!state.isNew && previousName !== null) {
+              const current = state.stacks.find((s) => s.name === previousName);
+              if (current && !isDirty()) {
+                state.originalName = current.name;
+                state.originalContent = current.content;
+                els.name.value = current.name;
+                editor.setValue(current.content);
+              }
+            }
+            if (!quiet)
+              setNotice(
+                `Loaded ${state.stacks.length} stack${state.stacks.length === 1 ? "" : "s"}.`,
+                "success",
+              );
+          } catch (error) {
+            setConnection(false, "API unavailable");
+            $("last-refresh").textContent = "Connection failed";
+            if (!quiet) setNotice(error.message, "error");
+            if (!state.stacks.length) {
+              els.stackList.innerHTML =
+                '<div class="empty"><strong>Could not load stacks</strong>Check that dc is running and the API is available on this host, then try again.</div>';
+              $("total-stacks").textContent = "—";
+            }
+          } finally {
+            setBusy(false);
+            updateEditorState();
+            editor.refresh();
+          }
+        }
+        async function saveStack() {
+          const name = els.name.value.trim();
+          const content = editor.getValue();
+          if (!name) return setNotice("Stack name is required.", "error");
+          if (!content.trim())
+            return setNotice("Compose content cannot be empty.", "error");
+          if (
+            name.includes("/") ||
+            name.includes("\\") ||
+            name === "." ||
+            name === ".."
+          )
+            return setNotice(
+              "Use a stack name without path separators.",
+              "error",
+            );
+          setBusy(true);
+          clearNotice();
+          try {
+            const data = await request("/stacks/" + encodeURIComponent(name), {
+              method: "POST",
+              body: JSON.stringify({ name, content }),
+            });
+            state.selectedName = name;
+            state.isNew = false;
+            state.originalName = name;
+            state.originalContent = content;
+            setNotice(
+              data.message || `The stack '${name}' was modified successfully`,
+              "success",
+            );
+            await loadStacks({ quiet: true });
+            const saved = state.stacks.find((s) => s.name === name);
+            if (saved) {
+              state.selectedName = saved.name;
+              state.originalName = saved.name;
+              state.originalContent = saved.content;
+              els.name.value = saved.name;
+              editor.setValue(saved.content);
+            }
+            renderStacks();
+          } catch (error) {
+            setNotice(error.message, "error");
+          } finally {
+            setBusy(false);
+            updateEditorState();
+            editor.refresh();
+          }
+        }
+        async function stackAction(action) {
+          if (!state.selectedName || state.isNew) return;
+          const name = state.selectedName;
+          const labels = {
+            start: "started",
+            stop: "stopped",
+            restart: "restarted",
+          };
+          if (action === "stop" && !window.confirm(`Stop stack "${name}"?`))
+            return;
+          setBusy(true);
+          clearNotice();
+          try {
+            const data = await request(
+              "/stacks/" + encodeURIComponent(name) + "/" + action,
+              { method: "POST" },
+            );
+            setNotice(
+              data.message || `Stack '${labels[action]}' successfully`,
+              "success",
+            );
+            await loadStacks({ quiet: true });
+          } catch (error) {
+            setNotice(error.message, "error");
+          } finally {
+            setBusy(false);
+            updateEditorState();
+          }
+        }
+
+        els.search.addEventListener("input", renderStacks);
+        els.name.addEventListener("input", updateEditorState);
+        editor.on("change", updateEditorState);
+        els.save.addEventListener("click", saveStack);
+        els.discard.addEventListener("click", () => {
+          if (!confirmDiscardIfDirty()) return;
+          if (state.isNew) {
+            state.isNew = false;
+            state.selectedName = null;
+            state.originalName = "";
+            state.originalContent = "";
+            els.name.value = "";
+            editor.setValue("");
+          } else {
+            els.name.value = state.originalName;
+            editor.setValue(state.originalContent);
+          }
+          clearNotice();
+          renderStacks();
+          updateEditorState();
+        });
+        els.start.addEventListener("click", () => stackAction("start"));
+        els.stop.addEventListener("click", () => stackAction("stop"));
+        els.restart.addEventListener("click", () => stackAction("restart"));
+        $("refresh-btn").addEventListener("click", () => loadStacks());
+        $("new-btn").addEventListener("click", newStack);
+        $("close-editor-btn").addEventListener("click", closeEditor);
+        els.modal.addEventListener("click", (event) => {
+          if (event.target === els.modal) closeEditor();
+        });
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && !els.modal.hidden) closeEditor();
+        });
+        state.name = "";
+        updateEditorState();
+        loadStacks();
+      })();
+    </script>
+  </body>
+</html>
