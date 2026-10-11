@@ -200,7 +200,12 @@ const commands = {
     }
 
     console.log(`Wrote ${outFile}`);
-    const configCode = compose(["-f", outFile, "config"]);
+    // Validate the generated file without echoing the rendered YAML.
+    const configCode = status(
+      spawnSync("docker", ["compose", "-f", outFile, "config"], {
+        stdio: ["inherit", "ignore", "inherit"],
+      }),
+    );
     if (configCode !== 0) return configCode;
     if (args[0] !== "up") return 0;
     return commands.up(args.slice(1));
