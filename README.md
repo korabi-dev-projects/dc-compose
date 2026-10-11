@@ -65,29 +65,17 @@ The setting lives in `~/.config/dc/config.json` (`$XDG_CONFIG_HOME/dc/config.jso
 Set `DC_CONFIG` to use a different file. If the path to your editor contains spaces, quote it inside the value:
 `dc editor '"C:\Program Files\Microsoft VS Code\bin\code.cmd" --wait'`.
 
-## Running the web server
-
-On Linux with systemd, install and start the Compose Manager server:
-
-```sh
-dc server enable
-```
-
-This installs `dc-server.service` under `/etc/systemd/system`, enables it at boot,
-and starts it immediately. `sudo` is required. The server listens on
-`http://127.0.0.1:56213`.
-
-To stop it, disable it, and remove the systemd unit:
-
-```sh
-dc server disable
-```
-
-The server command requires Linux with systemd; it is not available on Windows or macOS.
+Editor commands are parsed into an executable and arguments and are run without a
+shell. Configure only editor values you trust; shell syntax, pipes, redirects,
+and command substitution are not supported.
 
 ## Notes
 
-- `dc prune` and `dc clean` ask for confirmation before deleting anything.
+- `dc prune` asks you to confirm a daemon-wide removal of all unused images,
+  containers, and networks.
+- `dc down vols` asks you to explicitly type `DELETE` before removing
+  project-associated volumes and their data. Back up important volume data first.
+- `dc clean` asks for confirmation before pruning unused Docker resources.
 - A broken config file never blocks `dc edit`: it warns and falls back to `$VISUAL` / `$EDITOR`.
 
 ## License

@@ -4,12 +4,8 @@ import {
   existsSync,
   readFileSync,
   rmSync,
-  unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline/promises";
 import { createInterface as createLineReader } from "node:readline";
 import {
@@ -51,7 +47,26 @@ const compose = (args) => docker(["compose", ...args]);
 
 function capture(args) {
   const r = spawnSync("docker", args, { encoding: "utf8" });
-  return r.status === 0 ? r.stdout : "";
+  return {
+    ok: !r.error && r.status === 0,
+    status: r.status,
+    stdout: r.stdout ?? "",
+    stderr: r.stderr ?? "",
+    error: r.error,
+  };
+}
+
+function captureText(args) {
+  const result = capture(args);
+  if (!result.ok) {
+    const detail =
+      result.error?.code === "ENOENT"
+        ? "docker not found in PATH"
+        : result.stderr.trim() || result.error?.message || `exit code ${result.status}`;
+    console.error(`dc: docker ${args.join(" ")} failed: ${detail}`);
+    return undefined;
+  }
+  return result.stdout;
 }
 
 const lines = (s) => s.split(/\r?\n/).filter(Boolean);
@@ -88,121 +103,46 @@ function loadConfigSafe() {
   }
 }
 
-function editFile(file) {
-  const { editor } = resolveEditor(loadConfigSafe());
-  return status(
-    spawnSync(`${editor} "${file}"`, { shell: true, stdio: "inherit" }),
-  );
-}
-
 function onPath(binary) {
   const probe = process.platform === "win32" ? "where" : "which";
   return spawnSync(probe, [binary], { stdio: "ignore" }).status === 0;
 }
 
-const SERVER_FILE = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "server",
-  "dc-server.js",
-);
-const SYSTEMD_UNIT = "/etc/systemd/system/dc-server.service";
-
-function systemdUnit() {
-  const user = process.env.SUDO_USER || process.env.USER || process.env.LOGNAME;
-  if (!user)
-    throw new Error("Could not determine the user for the systemd service.");
-
-  const quote = (value) =>
-    `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-  return `[Unit]
-Description=dc Compose Manager server
-After=network.target docker.service
-
-[Service]
-Type=simple
-User=${user}
-ExecStart=${quote(process.execPath)} ${quote(SERVER_FILE)}
-Restart=on-failure
-RestartSec=2
-
-[Install]
-WantedBy=multi-user.target
-`;
-}
-
-function sudo(args) {
-  const result = spawnSync("sudo", args, { stdio: "inherit" });
-  if (result.error) {
-    console.error(
-      result.error.code === "ENOENT"
-        ? "dc: sudo is required for server administration but was not found in PATH"
-        : `dc: ${result.error.message}`,
-    );
-    return 127;
-  }
-  return result.status ?? 1;
-}
-
-function server(args) {
-  if (process.platform !== "linux") {
-    console.error("dc: server enable|disable requires Linux with systemd");
-    return 1;
-  }
-
-  if (args.length !== 1 || !["enable", "disable"].includes(args[0])) {
-    console.error("Usage: dc server enable|disable");
-    return 1;
-  }
-
-  if (args[0] === "enable") {
-    let temporaryUnit;
-    try {
-      temporaryUnit = resolve(tmpdir(), `dc-server.${process.pid}.service`);
-      writeFileSync(temporaryUnit, systemdUnit(), { mode: 0o644 });
-    } catch (error) {
-      console.error(`dc: could not create systemd unit: ${error.message}`);
+function editFile(file) {
+  const { editor } = resolveEditor(loadConfigSafe());
+  const parts = [];
+  const tokenPattern = /"([^"]*)"|'([^']*)'|(\S+)/g;
+  let match;
+  let end = 0;
+  while ((match = tokenPattern.exec(editor)) !== null) {
+    if (editor.slice(end, match.index).trim()) {
+      console.error("dc: invalid editor command: unmatched quote");
       return 1;
     }
-
-    try {
-      let code = sudo([
-        "install",
-        "-o",
-        "root",
-        "-g",
-        "root",
-        "-m",
-        "644",
-        temporaryUnit,
-        SYSTEMD_UNIT,
-      ]);
-      if (code !== 0) return code;
-      code = sudo(["systemctl", "daemon-reload"]);
-      if (code !== 0) return code;
-      return sudo(["systemctl", "enable", "--now", "dc-server.service"]);
-    } finally {
-      try {
-        unlinkSync(temporaryUnit);
-      } catch {}
-    }
+    parts.push(match[1] ?? match[2] ?? match[3]);
+    end = tokenPattern.lastIndex;
+  }
+  if (!parts.length || editor.slice(end).trim()) {
+    console.error("dc: invalid editor command");
+    return 1;
   }
 
-  let code = sudo(["systemctl", "disable", "--now", "dc-server.service"]);
-  if (code !== 0) return code;
-  code = sudo(["rm", "-f", SYSTEMD_UNIT]);
-  if (code !== 0) return code;
-  return sudo(["systemctl", "daemon-reload"]);
+  return status(spawnSync(parts[0], [...parts.slice(1), file], {
+    shell: false,
+    stdio: "inherit",
+  }));
 }
 
 // Returns a container id: the given service's, or one chosen from a picker.
 async function pickContainer(service) {
   if (service) {
     return lines(
-      capture(["compose", "ps", "--status", "running", "-q", service]),
+      captureText(["compose", "ps", "--status", "running", "-q", service]) ?? "",
     )[0];
   }
-  const ids = lines(capture(["compose", "ps", "--status", "running", "-q"]));
+  const ids = lines(
+    captureText(["compose", "ps", "--status", "running", "-q"]) ?? "",
+  );
   if (ids.length === 0) {
     console.error("No running containers found.");
     return undefined;
@@ -211,7 +151,7 @@ async function pickContainer(service) {
 
   console.log("Select a container:");
   ids.forEach((id, i) => {
-    const name = capture(["inspect", "-f", "{{.Name}}", id])
+    const name = (captureText(["inspect", "-f", "{{.Name}}", id]) ?? "")
       .trim()
       .replace(/^\//, "");
     console.log(`  ${i + 1}) ${name}`);
@@ -225,7 +165,7 @@ async function pickContainer(service) {
 }
 
 function projectIds() {
-  return lines(capture(["compose", "ps", "-q"]));
+  return lines(captureText(["compose", "ps", "-q"]) ?? "");
 }
 
 // ---------- commands ----------
@@ -312,8 +252,6 @@ const commands = {
     return 0;
   },
 
-  server,
-
   async rm() {
     const file = composeFile();
     if (!existsSync(file)) {
@@ -330,9 +268,9 @@ const commands = {
 
   async prune() {
     if (
-      !(await confirm(
-        "Remove ALL unused images, containers, networks (not volumes)?",
-      ))
+      (await ask(
+        "This affects the entire Docker daemon and removes ALL unused images, containers, and networks (not volumes). Type DELETE to continue: ",
+      )) !== "DELETE"
     ) {
       console.log("Cancelled.");
       return 0;
@@ -342,7 +280,9 @@ const commands = {
 
   async clean() {
     if (
-      !(await confirm("Remove stopped containers and unused Docker resources?"))
+      !(await confirm(
+        "Prune stopped containers and unused images and networks across the entire Docker daemon?",
+      ))
     ) {
       console.log("Cancelled.");
       return 0;
@@ -368,7 +308,20 @@ const commands = {
   },
 
   deploy: (args) => compose(["up", "-d", ...translate(FLAGS, args)]),
-  down: (args) => compose(["down", ...translate(DOWN_FLAGS, args)]),
+  async down(args) {
+    const translated = translate(DOWN_FLAGS, args);
+    if (translated.includes("--volumes")) {
+      if (
+        (await ask(
+          "This removes project-associated Docker volumes and their data. Type DELETE to continue: ",
+        )) !== "DELETE"
+      ) {
+        console.log("Cancelled.");
+        return 0;
+      }
+    }
+    return compose(["down", ...translated]);
+  },
   re: (args) => {
     if (args.length === 0) {
       console.error("Usage: dc re SERVICE...");
@@ -436,19 +389,21 @@ const commands = {
     }
     const tpl =
       "{{.Name}}{{range $n,$v := .NetworkSettings.Networks}}  {{$n}}={{$v.IPAddress}}{{end}}";
-    const out = capture(["inspect", "-f", tpl, ...ids]);
+    const out = captureText(["inspect", "-f", tpl, ...ids]);
+    if (out === undefined) return 1;
     console.log(out.replace(/^\//gm, "").trimEnd());
     return 0;
   },
 
   vols() {
     let project;
+    const config = captureText(["compose", "config", "--format", "json"]);
+    if (config === undefined) return 1;
     try {
-      project = JSON.parse(
-        capture(["compose", "config", "--format", "json"]),
-      ).name;
-    } catch {
-      /* fall back to listing everything */
+      project = JSON.parse(config).name;
+    } catch (error) {
+      console.error(`dc: could not parse Compose configuration: ${error.message}`);
+      return 1;
     }
     return docker([
       "volume",
@@ -485,7 +440,9 @@ const commands = {
   },
 
   __services() {
-    process.stdout.write(capture(["compose", "config", "--services"]));
+    const output = captureText(["compose", "config", "--services"]);
+    if (output === undefined) return 1;
+    process.stdout.write(output);
     return 0;
   },
 };

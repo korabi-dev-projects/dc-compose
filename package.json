@@ -1,7 +1,7 @@
 {
   "name": "dc-compose",
-  "version": "1.0.5",
-  "description": "Short, memorable shortcuts for docker compose",
+  "version": "1.0.6",
+  "description": "A CLI wrapper for Docker Compose with convenient shortcuts and TOML-to-YAML conversion",
   "type": "module",
   "bin": {
     "dc": "bin/dc.js"
@@ -18,7 +18,6 @@
   "files": [
     "bin",
     "src",
-    "server",
     "README.md"
   ],
   "engines": {

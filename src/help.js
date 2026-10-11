@@ -3,7 +3,6 @@ export const COMMANDS = [
   'pull', 'build', 'ps', 'logs', 'errs', 'top', 'stats', 'ports', 'ip',
   'health', 'images', 'vols', 'df', 'ls', 'config', 'shell', 'sh', 'exec',
   'run', 'cp', 'clean', 'prune', 'restart', 'stop', 'start', 'completion', 'help',
-  'server',
 ];
 
 export const KEYWORDS = [
@@ -14,7 +13,7 @@ export const USAGE = `Usage: dc COMMAND [OPTIONS]
 
 Lifecycle
   deploy|up [kw] [svc]   Start/recreate (keywords: build force pull orphans renew wait)
-  down [kw]              Stop and remove (keywords: vols orphans images)
+  down [kw]              Stop and remove (vols deletes project volumes)
   restart|stop|start     Act on services
   re SVC...              Force-recreate specific services
   upgrade [SVC...]       Pull + recreate (all, or just the given services)
@@ -52,10 +51,9 @@ Files
 
 Cleanup
   clean                  Prune stopped containers, dangling images, networks
-  prune                  Full prune incl. unused images (asks first)
+  prune                  Daemon-wide prune incl. unused images (types DELETE)
 
 Other
-  server enable|disable   Install/remove and start/stop the systemd server (Linux; sudo required)
   completion bash|zsh    Print a shell completion script
 `;
 
