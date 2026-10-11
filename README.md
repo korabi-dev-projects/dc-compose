@@ -1,6 +1,6 @@
 # dc-compose
 
-Short, memorable shortcuts for `docker compose`. Zero dependencies, works on Linux, macOS and Windows.
+Short, memorable shortcuts for `docker compose`, with TOML-to-YAML conversion support. Works on Linux, macOS and Windows.
 
 ```sh
 npm install -g dc-compose
