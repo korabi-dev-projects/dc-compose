@@ -20,6 +20,16 @@
   "engines": {
     "node": ">=18"
   },
-  "keywords": ["docker", "docker-compose", "compose", "cli", "devops"],
-  "license": "MIT"
+  "keywords": [
+    "docker",
+    "docker-compose",
+    "compose",
+    "cli",
+    "devops"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "js-yaml": "^5.4.3",
+    "smol-toml": "^1.9.1"
+  }
 }

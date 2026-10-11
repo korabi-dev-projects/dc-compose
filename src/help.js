@@ -1,5 +1,5 @@
 export const COMMANDS = [
-  'edit', 'env', 'editor', 'rm', 'deploy', 'up', 'down', 're', 'upgrade', 'update',
+  'toml', 'edit', 'env', 'editor', 'rm', 'deploy', 'up', 'down', 're', 'upgrade', 'update',
   'pull', 'build', 'ps', 'logs', 'errs', 'top', 'stats', 'ports', 'ip',
   'health', 'images', 'vols', 'df', 'ls', 'config', 'shell', 'sh', 'exec',
   'run', 'cp', 'clean', 'prune', 'restart', 'stop', 'start', 'completion', 'help',
@@ -44,6 +44,7 @@ Access
   cp SRC DST             docker compose cp (use svc:/path)
 
 Files
+  toml [kw] [svc]        Convert compose TOML to YAML, then start it
   edit                   Edit compose file
   env                    Edit .env
   editor [cmd|--unset]   Show or set the editor used by edit/env (e.g. dc editor vim)

@@ -13,6 +13,7 @@ Requires Node 18+ and Docker with the Compose plugin.
 
 ```sh
 dc up build pull       # docker compose up -d --build --pull always
+dc toml build web      # convert compose.toml, then start web with --build
 dc re web              # force-recreate one service
 dc upgrade web         # pull + recreate just web
 dc logs 50 web         # follow the last 50 lines of web
@@ -23,6 +24,11 @@ dc ip                  # container IPs
 ```
 
 Run `dc help` for the full command list.
+
+`dc toml` converts `compose.toml` (or `docker-compose.toml`) to the
+corresponding YAML file, then runs `dc up`. Any additional arguments are
+passed to `up`, including keywords such as `build`, `pull`, and `force`, or
+service names.
 
 ## Shell completion
 
