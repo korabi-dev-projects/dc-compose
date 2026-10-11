@@ -259,8 +259,11 @@ const commands = {
       return 1;
     }
 
-    if (args.length < 1) return console.log(`Wrote ${outFile}`);
-    return commands.up(args);
+    console.log(`Wrote ${outFile}`);
+    const configCode = compose(["-f", outFile, "config"]);
+    if (configCode !== 0) return configCode;
+    if (args[0] !== "up") return 0;
+    return commands.up(args.slice(1));
   },
   edit: () => editFile(composeFile()),
   env: () => editFile(".env"),

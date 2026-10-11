@@ -1,6 +1,6 @@
 {
   "name": "dc-compose",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "Short, memorable shortcuts for docker compose",
   "type": "module",
   "bin": {
@@ -10,6 +10,10 @@
     "name": "Korab Arifi",
     "email": "info@korabi.dev",
     "url": "https://korabi.dev/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/korabi-dev-projects/dc-compose.git"
   },
   "files": [
     "bin",

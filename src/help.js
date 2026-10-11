@@ -44,7 +44,7 @@ Access
   cp SRC DST             docker compose cp (use svc:/path)
 
 Files
-  toml [kw] [svc]        Convert compose TOML to YAML, then start it
+  toml [up [kw] [svc]]   Convert, validate TOML as YAML; optionally run up
   edit                   Edit compose file
   env                    Edit .env
   editor [cmd|--unset]   Show or set the editor used by edit/env (e.g. dc editor vim)
