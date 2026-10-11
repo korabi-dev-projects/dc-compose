@@ -1,6 +1,6 @@
 {
   "name": "dc-compose",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Short, memorable shortcuts for docker compose",
   "type": "module",
   "bin": {
